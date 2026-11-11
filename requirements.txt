@@ -4,3 +4,5 @@ isort>=6.1.0
 langchain-core>=1.7.6
 langchain-google-genai>=4.4.3
 python-dotenv>=1.2.1
+pydantic>=2.10.0
+pyyaml>=6.0.2
