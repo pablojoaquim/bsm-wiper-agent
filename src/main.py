@@ -1,0 +1,35 @@
+import os
+
+from dotenv import load_dotenv
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+
+def main():
+    # Load the API key from the project's .env file.
+    load_dotenv()
+    model = ChatGoogleGenerativeAI(
+        model=os.getenv("GEMINI_MODEL"),
+        google_api_key=os.getenv("GOOGLE_API_KEY"),
+        temperature=0.7,
+    )
+
+    # Build a prompt that accepts a topic at invocation time.
+    prompt_template = ChatPromptTemplate.from_messages([
+        ("system", "You are a helpful AI assistant that explains coding concepts simply."),
+        ("user", "What is {topic} and why should I care?"),
+    ])
+
+    # Convert the model's message into a plain string.
+    output_parser = StrOutputParser()
+
+    # Compose the prompt, model, and parser with LCEL.
+    chain = prompt_template | model | output_parser
+
+    response = chain.invoke({"topic": "LangChain"})
+    print(response)
+
+
+if __name__ == "__main__":
+    main()
