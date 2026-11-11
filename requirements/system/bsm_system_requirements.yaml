@@ -1,0 +1,114 @@
+
+requirements:
+  - id: SYS-001
+    title: Driver wiper control
+    level: system
+    statement: >
+      The BSM shall control the windshield wiper according
+      to the driver's selection.
+    status: approved
+    priority: high
+    verification_method: test
+    parent: null
+    derived_from: []
+    rationale: >
+      Provide driver-controlled windshield wiping.
+
+  - id: SYS-002
+    title: Wiper operating modes
+    level: system
+    statement: >
+      The BSM shall support OFF, INTERMITTENT, LOW and HIGH
+      windshield wiper operating modes.
+    status: approved
+    priority: high
+    verification_method: test
+    parent: SYS-001
+    derived_from: []
+    rationale: >
+      Provide the operating modes selected by the driver.
+
+  - id: SYS-003
+    title: Automatic rain sensing
+    level: system
+    statement: >
+      The BSM shall control windshield wiping automatically
+      based on the rain sensor level when automatic operation
+      is enabled.
+    status: approved
+    priority: high
+    verification_method: test
+    parent: SYS-001
+    derived_from: []
+    rationale: >
+      Provide automatic wiping based on rain conditions.
+
+  - id: SYS-004
+    title: Washer operation
+    level: system
+    statement: >
+      The BSM shall activate the washer pump when the driver
+      requests windshield washing.
+    status: approved
+    priority: medium
+    verification_method: test
+    parent: null
+    derived_from: []
+    rationale: >
+      Allow the driver to clean the windshield.
+
+  - id: SYS-005
+    title: Wiper park position
+    level: system
+    statement: >
+      The BSM shall ensure that the windshield wiper returns
+      to its rest position after operation when applicable.
+    status: approved
+    priority: high
+    verification_method: test
+    parent: SYS-001
+    derived_from: []
+    rationale: >
+      Ensure the wiper is parked correctly when switched off.
+
+  - id: SYS-006
+    title: Wiper output mutual exclusion
+    level: system
+    statement: >
+      The BSM shall prevent the LOW and HIGH wiper motor
+      outputs from being active simultaneously.
+    status: approved
+    priority: high
+    verification_method: test
+    parent: null
+    derived_from: []
+    rationale: >
+      Prevent conflicting motor commands.
+
+  - id: SYS-007
+    title: Input signal validation
+    level: system
+    statement: >
+      The BSM shall detect invalid or inconsistent input
+      signals before using them for wiper control.
+    status: approved
+    priority: high
+    verification_method: test
+    parent: null
+    derived_from: []
+    rationale: >
+      Avoid unintended behavior caused by invalid inputs.
+
+  - id: SYS-008
+    title: Ignition-dependent operation
+    level: system
+    statement: >
+      The BSM shall deactivate windshield wiper functions
+      when the ignition condition requires them to be disabled.
+    status: approved
+    priority: high
+    verification_method: test
+    parent: null
+    derived_from: []
+    rationale: >
+      Ensure wiper operation follows vehicle ignition conditions.
