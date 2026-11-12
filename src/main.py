@@ -9,6 +9,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from agents.requirement_loader import load_requirements
+from agents.requirement_validator import validate_requirements
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -22,7 +23,17 @@ def main():
 
     for requirement in requirements.requirements:
         print(f"{requirement.id}: {requirement.title}")
-        
+
+    errors = validate_requirements(requirements)
+
+    if errors:
+        print("\nRequirement validation FAILED:")
+        for error in errors:
+            print(f" - {error}")
+        return
+
+    print("Requirement validation PASSED")
+
     # # Load the API key from the project's .env file.
     # load_dotenv()
     # model = ChatGoogleGenerativeAI(

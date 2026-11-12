@@ -4,9 +4,9 @@ from pydantic import BaseModel, ConfigDict, Field
 class Requirement(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    id: str = Field(pattern=r"^(SYS|SWE|ML)-\d{3}$")
+    id: str = Field(pattern=r"^(SYS|SWE)-\d{3}$")
     title: str = Field(min_length=3)
-    level: Literal["system", "software", "ml"]
+    level: Literal["system", "software"]
     statement: str = Field(min_length=10)
     status: Literal["proposed", "approved", "rejected"]
     priority: Literal["low", "medium", "high"]
