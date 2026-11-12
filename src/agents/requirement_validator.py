@@ -45,9 +45,14 @@ def validate_requirements(document: RequirementDocument) -> list[str]:
                 "its own parent."
             )
 
-        # VAL-005: Every software requirement shall have a system requirement as its parent.
+        # VAL-005: Software requirements must have a system parent.
         if req.level == "software":
-            if req.parent is not None:
+            if req.parent is None:
+                errors.append(
+                    f"VAL-005: Software requirement '{req.id}' "
+                    "must have a system parent."
+                )
+            else:
                 parent = next(
                     (item for item in requirements if item.id == req.parent),
                     None,
@@ -55,7 +60,8 @@ def validate_requirements(document: RequirementDocument) -> list[str]:
                 if parent is not None and parent.level != "system":
                     errors.append(
                         f"VAL-005: Software requirement '{req.id}' "
-                        f"must have a system parent."
+                        "must have a system parent."
                     )
+
 
     return errors
