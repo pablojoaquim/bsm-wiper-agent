@@ -1,0 +1,8 @@
+﻿loadFile("processes/SWE.3_software_detailed_design/models/BSMWiperController.mo");
+getErrorString();
+
+translateModel(
+    BSMWiperController,
+    fileNamePrefix="processes/SWE.3_software_detailed_design/generated/simulation_c/BSMWiperController"
+);
+getErrorString();

@@ -1,9 +1,9 @@
 
 from pathlib import Path
 
-from agents.requirement_loader import load_requirements
-from agents.requirement_models import RequirementDocument
-from agents.requirement_validator import validate_requirements
+from requirement_loader import load_requirements
+from requirement_models import RequirementDocument
+from requirement_validator import validate_requirements
 
 
 def make_requirement(

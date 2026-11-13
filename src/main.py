@@ -5,11 +5,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 
-from agents.requirement_loader import load_requirements
-from agents.requirement_validator import validate_requirements
+from requirement_loader import load_requirements
+from requirement_validator import validate_requirements
 from agents.SWE1_software_requirements_agent import generate_software_requirements
-from agents.architecture_agent import generate_software_architecture
-from agents.design_agent import generate_software_design
+from agents.SWE2_software_architecture_agent import generate_software_architecture
+from agents.SWE3_software_design_agent import generate_software_design
 
 # Project root is the parent directory of src.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

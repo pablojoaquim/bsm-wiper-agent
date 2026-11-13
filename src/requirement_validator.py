@@ -1,7 +1,7 @@
 
 from collections import Counter
 
-from agents.requirement_models import RequirementDocument
+from requirement_models import RequirementDocument
 
 def validate_requirements(document: RequirementDocument) -> list[str]:
     errors = []

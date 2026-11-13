@@ -6,7 +6,7 @@ import yaml
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from agents.requirement_models import RequirementDocument
+from requirement_models import RequirementDocument
 
 
 def generate_software_requirements(
