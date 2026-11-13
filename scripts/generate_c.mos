@@ -1,5 +1,0 @@
-loadFile("C:/jpablo/00_Projects/bsm-wiper-agent/models/BSMWiperController.mo");
-getErrorString();
-
-translateModel(BSMWiperController, fileNamePrefix="C:/jpablo/00_Projects/bsm-wiper-agent/generated/c/BSMWiperController");
-getErrorString();

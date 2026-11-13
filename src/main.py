@@ -1,4 +1,4 @@
-
+﻿
 import os
 from pathlib import Path
 
@@ -7,7 +7,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from agents.requirement_loader import load_requirements
 from agents.requirement_validator import validate_requirements
-from agents.requirements_agent import generate_software_requirements
+from agents.SWE1_software_requirements_agent import generate_software_requirements
 from agents.architecture_agent import generate_software_architecture
 from agents.design_agent import generate_software_design
 
@@ -28,11 +28,11 @@ def main():
     )
 
     # Define artifact paths.
-    system_path = PROJECT_ROOT / "requirements/system/bsm_system_requirements.yaml"
-    software_path = PROJECT_ROOT / "requirements/software/bsm_software_requirements.yaml"
-    architecture_path = PROJECT_ROOT / "artifacts/architecture/bsm_software_architecture.yaml"
-    design_path = PROJECT_ROOT / "artifacts/design/bsm_software_detailed_design.yaml"
-
+    system_path = PROJECT_ROOT / "processes/SYS.2_system_requirements_analysis/SYS.2_system_requirements.yaml"
+    software_path = PROJECT_ROOT / "processes/SWE.1_software_requirements_analysis/SWE.1_software_requirements.yaml"
+    architecture_path = PROJECT_ROOT / "processes/SWE.2_software_architectural_design/SWE.2_software_architecture.yaml"
+    design_path = PROJECT_ROOT / "processes/SWE.3_software_detailed_design/SWE.3_software_detailed_design.yaml"
+    
     # Load system requirements.
     system_document = load_requirements(system_path)
 
@@ -126,3 +126,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
