@@ -1,0 +1,206 @@
+software_detailed_design:
+  name: BSM Software Detailed Design
+  description: Detailed design of the BSM software.
+  units:
+  - id: UNIT-001
+    name: InputValidator
+    component_id: SWC-001
+    responsibility: Performs range and plausibility checks on hardware input signals
+      and flags invalid input states.
+    inputs:
+    - name: RawWiperSwitchSignal
+      type: uint8
+      description: Raw wiper switch position input signal.
+    - name: RawRainIntensitySignal
+      type: uint8
+      description: Raw rain sensor intensity input signal.
+    - name: RawWasherRequestSignal
+      type: boolean
+      description: Raw windshield washer request input signal.
+    - name: RawIgnitionStatusSignal
+      type: uint8
+      description: Raw ignition status input signal.
+    outputs:
+    - name: ValidatedWiperSwitchSignal
+      type: uint8
+      description: Validated wiper switch selection.
+    - name: ValidatedRainIntensity
+      type: uint8
+      description: Plausible rain sensor intensity level.
+    - name: ValidatedWasherRequest
+      type: boolean
+      description: Validated washer request flag.
+    - name: IgnitionStatus
+      type: uint8
+      description: Validated vehicle ignition state.
+    - name: InputFaultDetected
+      type: boolean
+      description: Flag indicating an invalid or out-of-range input signal.
+    behavior:
+    - 'Step 1: Read raw hardware input signals for wiper switch, rain intensity, washer
+      request, and ignition status.'
+    - 'Step 2: Check raw signal values against defined valid operational ranges.'
+    - 'Step 3: If any signal exceeds defined range or exhibits implausible state combinations,
+      set InputFaultDetected to true and override ValidatedWiperSwitchSignal to OFF
+      (0).'
+    - 'Step 4: If signals are valid, set InputFaultDetected to false and pass raw
+      values to corresponding validated output signals.'
+    allocated_requirements:
+    - SWE-009
+  - id: UNIT-002
+    name: SwitchDecoder
+    component_id: SWC-001
+    responsibility: Decodes driver wiper switch position input into discrete operating
+      modes.
+    inputs:
+    - name: ValidatedWiperSwitchSignal
+      type: uint8
+      description: Validated driver wiper switch position.
+    - name: InputFaultDetected
+      type: boolean
+      description: Input fault status from InputValidator.
+    outputs:
+    - name: DecodedWiperMode
+      type: uint8
+      description: 'Decoded operating mode (0: OFF, 1: INTERMITTENT, 2: LOW, 3: HIGH,
+        4: AUTO).'
+    behavior:
+    - 'Step 1: Evaluate InputFaultDetected signal state.'
+    - 'Step 2: If InputFaultDetected is true, set DecodedWiperMode to OFF (0).'
+    - 'Step 3: If InputFaultDetected is false, decode ValidatedWiperSwitchSignal to
+      determine selected mode.'
+    - 'Step 4: Set DecodedWiperMode output to OFF (0), INTERMITTENT (1), LOW (2),
+      HIGH (3), or AUTO (4) based on switch position.'
+    allocated_requirements:
+    - SWE-001
+  - id: UNIT-003
+    name: IntermittentAndAutoWipeController
+    component_id: SWC-002
+    responsibility: Executes intermittent cycle timing and automatic rain-intensity-based
+      wiping logic.
+    inputs:
+    - name: DecodedWiperMode
+      type: uint8
+      description: Decoded driver wiper operating mode selection.
+    - name: ValidatedRainIntensity
+      type: uint8
+      description: Validated rain intensity signal.
+    - name: IntermittentIntervalConfig
+      type: uint16
+      description: Configurable periodic interval time for intermittent wiping.
+    outputs:
+    - name: DesiredWiperSpeed
+      type: uint8
+      description: 'Requested wiping speed (0: OFF, 1: LOW, 2: HIGH).'
+    behavior:
+    - 'Step 1: Read DecodedWiperMode, ValidatedRainIntensity, and IntermittentIntervalConfig.'
+    - 'Step 2: If DecodedWiperMode is LOW or HIGH, set DesiredWiperSpeed to 1 (LOW)
+      or 2 (HIGH) respectively.'
+    - 'Step 3: If DecodedWiperMode is INTERMITTENT, run periodic timing counter based
+      on IntermittentIntervalConfig to pulse DesiredWiperSpeed between 1 (LOW) and
+      0 (OFF).'
+    - 'Step 4: If DecodedWiperMode is AUTO, evaluate ValidatedRainIntensity against
+      calibrated thresholds to set DesiredWiperSpeed to 0 (OFF), 1 (LOW), or 2 (HIGH).'
+    - 'Step 5: If DecodedWiperMode is OFF, set DesiredWiperSpeed to 0 (OFF).'
+    allocated_requirements:
+    - SWE-004
+    - SWE-005
+  - id: UNIT-004
+    name: WasherAndIgnitionManager
+    component_id: SWC-002
+    responsibility: Manages washer pump activation command and monitors ignition state
+      for system lockout enforcement.
+    inputs:
+    - name: ValidatedWasherRequest
+      type: boolean
+      description: Validated driver washer request signal.
+    - name: IgnitionStatus
+      type: uint8
+      description: 'Validated vehicle ignition status (0: OFF/INACTIVE, 1: ACTIVE).'
+    outputs:
+    - name: WasherPumpCommand
+      type: boolean
+      description: Command signal to activate washer pump output.
+    - name: IgnitionLockoutActive
+      type: boolean
+      description: Flag indicating outputs must be locked out due to inactive ignition.
+    behavior:
+    - 'Step 1: Evaluate IgnitionStatus input.'
+    - 'Step 2: If IgnitionStatus indicates inactive/off state (0), set IgnitionLockoutActive
+      to true and WasherPumpCommand to false.'
+    - 'Step 3: If IgnitionStatus indicates active state (1), set IgnitionLockoutActive
+      to false.'
+    - 'Step 4: If IgnitionLockoutActive is false, set WasherPumpCommand equal to ValidatedWasherRequest.'
+    allocated_requirements:
+    - SWE-006
+    - SWE-010
+  - id: UNIT-005
+    name: ParkPositionAndActuationController
+    component_id: SWC-003
+    responsibility: Controls target wiper motor speed while ensuring wiping cycle
+      completes to park position upon deactivation.
+    inputs:
+    - name: DesiredWiperSpeed
+      type: uint8
+      description: Requested wiping speed from mode manager.
+    - name: ParkPositionState
+      type: boolean
+      description: 'Wiper switch park position indicator (true: parked, false: active
+        stroke).'
+    outputs:
+    - name: TargetWiperSpeed
+      type: uint8
+      description: 'Resolved wiper motor output speed request (0: OFF, 1: LOW, 2:
+        HIGH).'
+    behavior:
+    - 'Step 1: Read DesiredWiperSpeed and ParkPositionState.'
+    - 'Step 2: If DesiredWiperSpeed is LOW (1) or HIGH (2), set TargetWiperSpeed to
+      DesiredWiperSpeed.'
+    - 'Step 3: If DesiredWiperSpeed changes to OFF (0) and ParkPositionState is false
+      (not parked), keep TargetWiperSpeed at LOW (1) to continue cycle to park position.'
+    - 'Step 4: If DesiredWiperSpeed is OFF (0) and ParkPositionState is true (parked),
+      set TargetWiperSpeed to OFF (0).'
+    allocated_requirements:
+    - SWE-002
+    - SWE-003
+    - SWE-007
+  - id: UNIT-006
+    name: MotorOutputInterlock
+    component_id: SWC-003
+    responsibility: Enforces mutual exclusion between motor drivers and applies lockout
+      control to physical output commands.
+    inputs:
+    - name: TargetWiperSpeed
+      type: uint8
+      description: Target wiper speed command.
+    - name: WasherPumpCommand
+      type: boolean
+      description: Washer pump command.
+    - name: IgnitionLockoutActive
+      type: boolean
+      description: Ignition lockout active state.
+    outputs:
+    - name: LowSpeedMotorDriverCmd
+      type: boolean
+      description: Physical command to low-speed wiper motor output driver.
+    - name: HighSpeedMotorDriverCmd
+      type: boolean
+      description: Physical command to high-speed wiper motor output driver.
+    - name: WasherPumpDriverCmd
+      type: boolean
+      description: Physical command to washer pump output driver.
+    behavior:
+    - 'Step 1: Evaluate IgnitionLockoutActive flag.'
+    - 'Step 2: If IgnitionLockoutActive is true, force LowSpeedMotorDriverCmd, HighSpeedMotorDriverCmd,
+      and WasherPumpDriverCmd to false.'
+    - 'Step 3: If IgnitionLockoutActive is false, check TargetWiperSpeed.'
+    - 'Step 4: If TargetWiperSpeed is HIGH (2), set HighSpeedMotorDriverCmd to true
+      and LowSpeedMotorDriverCmd to false.'
+    - 'Step 5: If TargetWiperSpeed is LOW (1), set LowSpeedMotorDriverCmd to true
+      and HighSpeedMotorDriverCmd to false.'
+    - 'Step 6: If TargetWiperSpeed is OFF (0), set both LowSpeedMotorDriverCmd and
+      HighSpeedMotorDriverCmd to false.'
+    - 'Step 7: Pass WasherPumpCommand to WasherPumpDriverCmd when IgnitionLockoutActive
+      is false.'
+    allocated_requirements:
+    - SWE-008

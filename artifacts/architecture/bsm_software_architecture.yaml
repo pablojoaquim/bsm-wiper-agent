@@ -1,0 +1,52 @@
+architecture:
+  name: BSM Wiper Control Software Architecture
+  description: High-level software architecture for Body System Module (BSM) windshield
+    wiper and washer control.
+  components:
+  - id: SWC-001
+    name: InputValidationAndDecoding
+    responsibility: Performs range and plausibility checks on hardware inputs (wiper
+      switch, rain sensor, ignition) and decodes driver wiper switch selections.
+    allocated_requirements:
+    - SWE-001
+    - SWE-009
+  - id: SWC-002
+    name: WiperControlModeManager
+    responsibility: Executes wiper operational state logic including intermittent
+      timing cycles, rain sensor auto wiping, washer request handling, and ignition
+      lockout enforcement.
+    allocated_requirements:
+    - SWE-004
+    - SWE-005
+    - SWE-006
+    - SWE-010
+  - id: SWC-003
+    name: WiperOutputActuator
+    responsibility: Controls low-speed and high-speed wiper motor drivers and washer
+      pump output, enforces output mutual exclusion, and handles park position sequence.
+    allocated_requirements:
+    - SWE-002
+    - SWE-003
+    - SWE-007
+    - SWE-008
+  interfaces:
+  - id: IF-001
+    source_component: SWC-001
+    target_component: SWC-002
+    signals:
+    - DecodedWiperMode
+    - ValidatedRainIntensity
+    - IgnitionStatus
+    - ValidatedWasherRequest
+  - id: IF-002
+    source_component: SWC-002
+    target_component: SWC-003
+    signals:
+    - TargetWiperSpeed
+    - WasherPumpCommand
+    - IgnitionLockoutActive
+  - id: IF-003
+    source_component: SWC-003
+    target_component: SWC-002
+    signals:
+    - ParkPositionState

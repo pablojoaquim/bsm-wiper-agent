@@ -1,0 +1,126 @@
+requirements:
+- id: SWE-001
+  title: Wiper Switch Input Decoding
+  level: software
+  statement: The software shall evaluate the driver wiper switch input signals to
+    select between OFF, INTERMITTENT, LOW, and HIGH operating modes.
+  status: proposed
+  priority: high
+  verification_method: test
+  parent: SYS-002
+  derived_from:
+  - SYS-001
+  - SYS-002
+  rationale: Software must decode physical switch inputs to set the requested wiper
+    operating state.
+- id: SWE-002
+  title: Low Speed Wiper Motor Control
+  level: software
+  statement: The software shall activate the low-speed wiper output driver when the
+    selected operating mode is LOW.
+  status: proposed
+  priority: high
+  verification_method: test
+  parent: SYS-002
+  derived_from:
+  - SYS-002
+  rationale: Translates LOW operating mode into motor low-speed output actuation.
+- id: SWE-003
+  title: High Speed Wiper Motor Control
+  level: software
+  statement: The software shall activate the high-speed wiper output driver when the
+    selected operating mode is HIGH.
+  status: proposed
+  priority: high
+  verification_method: test
+  parent: SYS-002
+  derived_from:
+  - SYS-002
+  rationale: Translates HIGH operating mode into motor high-speed output actuation.
+- id: SWE-004
+  title: Intermittent Wiper Timing Control
+  level: software
+  statement: The software shall execute periodic wiping cycles based on configurable
+    time intervals when the INTERMITTENT operating mode is active.
+  status: proposed
+  priority: medium
+  verification_method: test
+  parent: SYS-002
+  derived_from:
+  - SYS-002
+  rationale: Provides cycle timing logic required for intermittent wiping.
+- id: SWE-005
+  title: Rain Sensor Processing and Control
+  level: software
+  statement: The software shall adjust wiping speed and interval based on rain intensity
+    input from the rain sensor when automatic operation is selected.
+  status: proposed
+  priority: high
+  verification_method: test
+  parent: SYS-003
+  derived_from:
+  - SYS-003
+  rationale: Implements software logic to map rain sensor intensity to wiper actuation.
+- id: SWE-006
+  title: Washer Pump Control Logic
+  level: software
+  statement: The software shall activate the washer pump output driver while the washer
+    request input signal is active.
+  status: proposed
+  priority: medium
+  verification_method: test
+  parent: SYS-004
+  derived_from:
+  - SYS-004
+  rationale: Drives washer pump output according to driver washing requests.
+- id: SWE-007
+  title: Park Position Monitoring and Control
+  level: software
+  statement: The software shall maintain wiper motor actuation after deactivation
+    until the wiper park switch input indicates the park rest position.
+  status: proposed
+  priority: high
+  verification_method: test
+  parent: SYS-005
+  derived_from:
+  - SYS-005
+  rationale: Ensures software completes wiping cycle to park position before disabling
+    motor drivers.
+- id: SWE-008
+  title: Motor Output Mutual Exclusion
+  level: software
+  statement: The software shall guarantee that the LOW speed and HIGH speed output
+    driver commands are never concurrently set to active.
+  status: proposed
+  priority: high
+  verification_method: test
+  parent: SYS-006
+  derived_from:
+  - SYS-006
+  rationale: Software interlocking logic prevents electrical conflict or motor driver
+    damage.
+- id: SWE-009
+  title: Input Signal Validation and Safe State
+  level: software
+  statement: The software shall perform range and plausibility checks on wiper control
+    inputs and switch to OFF mode if an invalid input state is detected.
+  status: proposed
+  priority: high
+  verification_method: test
+  parent: SYS-007
+  derived_from:
+  - SYS-007
+  rationale: Validates inputs to prevent unexpected wiper actuation due to faulty
+    hardware inputs.
+- id: SWE-010
+  title: Ignition State Dependent Output Lockout
+  level: software
+  statement: The software shall force all wiper and washer motor control outputs to
+    inactive when the ignition status indicates an inactive or off state.
+  status: proposed
+  priority: high
+  verification_method: test
+  parent: SYS-008
+  derived_from:
+  - SYS-008
+  rationale: Restricts wiper operation based on the vehicle ignition state.
