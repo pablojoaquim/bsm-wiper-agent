@@ -7,6 +7,7 @@ from process_evidence import write_process_evidence
 
 def test_rar_consolidates_assumptions_open_issues_and_stage_sources(tmp_path):
     evidence_path = tmp_path / "SWE3_evidence.yaml"
+    codegen_evidence_path = tmp_path / "codegen_evidence.yaml"
     write_process_evidence(
         artifact_path="design.yaml",
         stage="SWE.3 Model Generation",
@@ -26,15 +27,38 @@ def test_rar_consolidates_assumptions_open_issues_and_stage_sources(tmp_path):
         validation="Model generated.",
         evidence_path=evidence_path,
     )
+    write_process_evidence(
+        artifact_path="BSMWiperController.c",
+        stage="SWE.3 Modelica Code Generation",
+        assumptions=[{
+            "id": "ASM-001",
+            "requirement_ids": ["SYS-001", "SWE-001"],
+            "missing_information": "Timing is unspecified.",
+            "decision": "Use a one-second interval.",
+            "rationale": "Provides a concrete simulation default.",
+        }],
+        open_issues=[{
+            "id": "OI-001",
+            "requirement_ids": ["SYS-001"],
+            "missing_information": "Customer response-time target.",
+            "reason_unresolved": "No customer target was provided.",
+        }],
+        validation="Code generated.",
+        evidence_path=codegen_evidence_path,
+    )
     output_path = tmp_path / "RAR.yaml"
 
-    report = generate_rar_report([evidence_path], output_path)
+    report = generate_rar_report([evidence_path, codegen_evidence_path], output_path)
 
     rar = report["rar"]
     assert rar["assumptions"][0]["classification"] == "assumption"
     assert rar["assumptions"][0]["global_id"] == "SWE.3 Model Generation:ASM-001"
+    assert len(rar["assumptions"][0]["sources"]) == 2
     assert rar["open_issues"][0]["global_id"] == "SWE.3 Model Generation:OI-001"
-    assert rar["summary"]["stage_count"] == 1
+    assert len(rar["open_issues"][0]["sources"]) == 2
+    assert rar["summary"]["stage_count"] == 2
+    assert rar["summary"]["assumption_count"] == 1
+    assert rar["summary"]["open_issue_count"] == 1
     assert yaml.safe_load(output_path.read_text(encoding="utf-8")) == report
 
 

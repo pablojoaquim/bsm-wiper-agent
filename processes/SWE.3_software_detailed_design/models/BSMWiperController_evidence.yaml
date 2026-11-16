@@ -1,0 +1,74 @@
+schema_version: 1
+stage: SWE.3 Model Generation
+status: completed
+artifact_path: C:\jpablo\00_Projects\bsm-wiper-agent\processes\SWE.3_software_detailed_design\models\BSMWiperController.mo
+assumptions:
+- id: ASM-001
+  classification: assumption
+  requirement_ids:
+  - SYS-007
+  - SWE-009
+  missing_information: Explicit operational ranges for raw hardware signals were missing
+    from SWE.3 detailed design.
+  decision: 'Defined valid operational ranges: RawWiperSwitchSignal in [0..4] (0:
+    OFF, 1: INT, 2: LOW, 3: HIGH, 4: AUTO), RawRainIntensitySignal in [0..100], and
+    RawIgnitionStatusSignal in [0..1]. Signals outside these bounds trigger InputFaultDetected
+    = true.'
+  rationale: Enforces deterministic range check validation as required by SWE-009
+    and prevents invalid switch decoding.
+- id: ASM-002
+  classification: assumption
+  requirement_ids:
+  - SYS-002
+  - SWE-004
+  missing_information: Wipe cycle active pulse duration during intermittent mode was
+    not specified.
+  decision: Set the active wiping pulse duration to 1.0 second for each intermittent
+    cycle.
+  rationale: Provides a fixed pulse width so cycle interval timing can be calculated
+    deterministically.
+- id: ASM-003
+  classification: assumption
+  requirement_ids:
+  - SYS-003
+  - SWE-005
+  missing_information: Rain intensity threshold values for mapping rain sensor intensity
+    to wiper speed levels were omitted.
+  decision: 'Mapped rain intensity levels as follows: 0 = OFF, 1 to 50 = LOW speed
+    (1), and > 50 = HIGH speed (2).'
+  rationale: Establishes clear, tiered speed thresholds for automatic rain-sensing
+    operation.
+- id: ASM-004
+  classification: assumption
+  requirement_ids:
+  - SYS-005
+  - SWE-007
+  missing_information: Motor speed selection for the completion of the unparked stroke
+    was not specified.
+  decision: Selected LOW speed (1) for motor actuation while returning an unparked
+    wiper to the park rest position.
+  rationale: Provides smooth, controlled return to the rest position when wiping is
+    switched off mid-stroke.
+open_issues:
+- id: OI-001
+  status: open
+  requirement_ids:
+  - SYS-003
+  - SWE-005
+  missing_information: Calibrated threshold parameters for rain sensor sensitivity
+    levels across different vehicle speed and weather conditions.
+  reason_unresolved: Final calibration parameters require vehicle physical validation
+    and aerodynamic dynamic testing.
+validation: Generated unit models and test harness compiled and the test harness simulation
+  produced a result.
+metadata:
+  model_files:
+  - BSMWiperController.mo
+  - BSMWiperTest.mo
+  unit_models:
+  - InputValidator
+  - SwitchDecoder
+  - IntermittentAndAutoWipeController
+  - WasherAndIgnitionManager
+  - ParkPositionAndActuationController
+  - MotorOutputInterlock

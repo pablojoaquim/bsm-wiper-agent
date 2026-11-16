@@ -37,22 +37,49 @@ def generate_rar_report(
         stage_records.append(stage_entry)
 
         for assumption in record.assumptions:
-            assumptions.append({
-                **assumption.model_dump(mode="json"),
-                "source_stage": record.stage,
-                "source_artifact": record.artifact_path,
-                "source_evidence": str(evidence_path),
-                "global_id": f"{record.stage}:{assumption.id}",
-            })
+            source = {
+                "stage": record.stage,
+                "artifact_path": record.artifact_path,
+                "evidence_path": str(evidence_path),
+            }
+            assumption_data = assumption.model_dump(mode="json")
+            duplicate = next((
+                item for item in assumptions
+                if item["id"] == assumption.id
+                and item["requirement_ids"] == assumption_data["requirement_ids"]
+                and item["decision"] == assumption.decision
+            ), None)
+            if duplicate is None:
+                assumptions.append({
+                    **assumption_data,
+                    "global_id": f"{record.stage}:{assumption.id}",
+                    "sources": [source],
+                })
+            else:
+                duplicate["sources"].append(source)
 
         for issue in record.open_issues:
-            open_issues.append({
-                **issue.model_dump(mode="json"),
-                "source_stage": record.stage,
-                "source_artifact": record.artifact_path,
-                "source_evidence": str(evidence_path),
-                "global_id": f"{record.stage}:{issue.id}",
-            })
+            source = {
+                "stage": record.stage,
+                "artifact_path": record.artifact_path,
+                "evidence_path": str(evidence_path),
+            }
+            issue_data = issue.model_dump(mode="json")
+            duplicate = next((
+                item for item in open_issues
+                if item["id"] == issue.id
+                and item["requirement_ids"] == issue_data["requirement_ids"]
+                and item["missing_information"] == issue.missing_information
+                and item["reason_unresolved"] == issue.reason_unresolved
+            ), None)
+            if duplicate is None:
+                open_issues.append({
+                    **issue_data,
+                    "global_id": f"{record.stage}:{issue.id}",
+                    "sources": [source],
+                })
+            else:
+                duplicate["sources"].append(source)
 
     report = {
         "rar": {

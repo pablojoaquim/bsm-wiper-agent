@@ -1,5 +1,6 @@
 import re
 import subprocess
+from pathlib import Path
 
 import pytest
 import yaml
@@ -18,6 +19,16 @@ def test_generates_simulation_code_and_preserves_assumption_evidence(
         "model BSMWiperController\n"
         "  // ASSUMPTION ASM-001: Use ignition as output enable.\n"
         "end BSMWiperController;\n",
+        encoding="utf-8",
+    )
+    test_model_path = model_path.with_name("BSMWiperTest.mo")
+    test_model_path.write_text(
+        "model BSMWiperTest\n"
+        "  BSMWiperController controller;\n"
+        "equation\n"
+        "  controller.ignitionOn = true;\n"
+        "  assert(controller.motorOn, \"Ignition enables motor.\");\n"
+        "end BSMWiperTest;\n",
         encoding="utf-8",
     )
     write_process_evidence(
@@ -50,11 +61,17 @@ def test_generates_simulation_code_and_preserves_assumption_evidence(
         script = open(command[1], encoding="utf-8").read()
         prefix = re.search(r'translateModel\(BSMWiperController, fileNamePrefix="([^"]+)"', script)
         assert prefix is not None
+        assert "simulate(BSMWiperTest" in script
         generated_c = f"{prefix.group(1)}.c"
         with open(generated_c, "w", encoding="utf-8") as file:
             file.write("/* generated simulation source */\n")
         with open(f"{prefix.group(1)}.h", "w", encoding="utf-8") as file:
             file.write("/* generated header */\n")
+        with open(
+            f"{Path(prefix.group(1)).parent / 'BSMWiperTest_res.mat'}",
+            "wb",
+        ) as file:
+            file.write(b"simulation result")
         return subprocess.CompletedProcess(
             command,
             0,
@@ -70,6 +87,7 @@ def test_generates_simulation_code_and_preserves_assumption_evidence(
         model_path,
         output_directory,
         omc_executable="omc-test",
+        test_model_path=test_model_path,
     )
 
     assert record["status"] == "passed"
@@ -78,6 +96,7 @@ def test_generates_simulation_code_and_preserves_assumption_evidence(
     assert record["open_issues"][0]["id"] == "OI-001"
     assert (output_directory / "BSMWiperController.c").is_file()
     assert "BSMWiperController.h" in record["metadata"]["generated_files"]
+    assert "BSMWiperTest_res.mat" in record["metadata"]["generated_files"]
 
     persisted_record = yaml.safe_load(
         (output_directory / "BSMWiperController_evidence.yaml")

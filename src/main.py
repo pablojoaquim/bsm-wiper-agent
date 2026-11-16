@@ -52,6 +52,7 @@ def run_workflow(
         / "models"
         / "BSMWiperController.mo"
     )
+    test_model_path = model_path.with_name("BSMWiperTest.mo")
     code_output_path = (
         processes_path
         / "SWE.3_software_detailed_design"
@@ -192,7 +193,18 @@ def run_workflow(
         return finish()
 
     try:
-        if model_path.is_file():
+        model_evidence_path = evidence_path_for(model_path)
+        model_evidence = (
+            _load_yaml(model_evidence_path)
+            if model_evidence_path.is_file()
+            else {}
+        )
+        model_files = model_evidence.get("metadata", {}).get("model_files", [])
+        if (
+            model_path.is_file()
+            and test_model_path.is_file()
+            and model_files == [model_path.name, test_model_path.name]
+        ):
             stage_status["SWE.3_model"] = "reused"
         else:
             generate_modelica_model(
@@ -201,6 +213,7 @@ def run_workflow(
                 design,
                 get_model(),
                 model_path,
+                test_model_path,
             )
             stage_status["SWE.3_model"] = "generated"
     except Exception as error:
@@ -212,6 +225,7 @@ def run_workflow(
             model_path,
             code_output_path,
             model_generation_record_path=evidence_path_for(model_path),
+            test_model_path=test_model_path,
             omc_executable=omc_executable,
         )
         stage_status["SWE.3_code"] = "passed"

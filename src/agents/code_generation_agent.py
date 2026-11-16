@@ -15,10 +15,16 @@ def generate_simulation_code(
     model_path: str | Path,
     output_directory: str | Path,
     model_generation_record_path: str | Path | None = None,
+    test_model_path: str | Path | None = None,
     omc_executable: str | Path | None = None,
     timeout: int = 300,
 ) -> dict:
     model_path = Path(model_path).resolve()
+    test_model_path = (
+        Path(test_model_path).resolve()
+        if test_model_path is not None
+        else None
+    )
     output_directory = Path(output_directory).resolve()
     output_directory.mkdir(parents=True, exist_ok=True)
     code_artifact_path = output_directory / f"{model_path.stem}.c"
@@ -27,6 +33,7 @@ def generate_simulation_code(
     open_issues = []
     metadata = {
         "model_source": str(model_path),
+        "test_model_source": str(test_model_path) if test_model_path else None,
         "compiler_executable": None,
         "compiler_version": None,
         "generated_files": [],
@@ -42,6 +49,8 @@ def generate_simulation_code(
             raise FileNotFoundError(f"Modelica source not found: {model_path}")
 
         source_text = model_path.read_text(encoding="utf-8")
+        if test_model_path is not None and not test_model_path.is_file():
+            raise FileNotFoundError(f"Modelica test source not found: {test_model_path}")
         generation_record_path = (
             Path(model_generation_record_path)
             if model_generation_record_path is not None
@@ -102,15 +111,28 @@ def generate_simulation_code(
             temp_output.mkdir()
             modelica_script = temp_root / "generate_simulation_code.mos"
             output_prefix = temp_output / model_path.stem
+            script_lines = [
+                f"cd({json.dumps(temp_output.as_posix())});",
+                f"loadFile({json.dumps(model_path.as_posix())});",
+                "getErrorString();",
+            ]
+            if test_model_path is not None:
+                script_lines.extend([
+                    f"loadFile({json.dumps(test_model_path.as_posix())});",
+                    "getErrorString();",
+                    "checkModel(BSMWiperTest);",
+                    "getErrorString();",
+                    "simulate(BSMWiperTest, stopTime=10.0);",
+                    "getErrorString();",
+                ])
+            script_lines.extend([
+                "translateModel(BSMWiperController, fileNamePrefix="
+                f"{json.dumps(output_prefix.as_posix())});",
+                "getErrorString();",
+                "",
+            ])
             modelica_script.write_text(
-                "\n".join([
-                    f"loadFile({json.dumps(model_path.as_posix())});",
-                    "getErrorString();",
-                    "translateModel(BSMWiperController, fileNamePrefix="
-                    f"{json.dumps(output_prefix.as_posix())});",
-                    "getErrorString();",
-                    "",
-                ]),
+                "\n".join(script_lines),
                 encoding="utf-8",
             )
             result = subprocess.run(
@@ -133,6 +155,13 @@ def generate_simulation_code(
                 raise RuntimeError(
                     "OpenModelica did not produce the expected C simulation source."
                 )
+            if test_model_path is not None and not any(
+                path.name.endswith("_res.mat")
+                for path in temp_output.iterdir()
+            ):
+                raise RuntimeError(
+                    "OpenModelica did not produce a test simulation result."
+                )
 
             generated_files = sorted(
                 path for path in temp_output.rglob("*") if path.is_file()
@@ -148,7 +177,11 @@ def generate_simulation_code(
             ]
 
         status = "passed"
-        validation = "OpenModelica translation succeeded and non-empty C simulation source was generated."
+        validation = (
+            "OpenModelica simulated the test model and generated non-empty C simulation source."
+            if test_model_path is not None
+            else "OpenModelica translation succeeded and non-empty C simulation source was generated."
+        )
     except Exception as error:
         write_process_evidence(
             code_artifact_path,

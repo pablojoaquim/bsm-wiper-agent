@@ -1,9 +1,11 @@
 import re
 import subprocess
+from pathlib import Path
 
 import yaml
 
 import main
+from process_evidence import write_process_evidence
 
 
 def make_requirement(requirement_id, level):
@@ -71,6 +73,24 @@ def test_workflow_reuses_artifacts_generates_code_and_reports_evidence_gaps(
         "end BSMWiperController;\n",
         encoding="utf-8",
     )
+    test_model_path = model_path.with_name("BSMWiperTest.mo")
+    test_model_path.write_text(
+        "model BSMWiperTest\n"
+        "  BSMWiperController controller;\n"
+        "equation\n"
+        "  controller.ignitionOn = true;\n"
+        "  assert(controller.motorOn, \"Ignition enables motor.\");\n"
+        "end BSMWiperTest;\n",
+        encoding="utf-8",
+    )
+    write_process_evidence(
+        model_path,
+        stage="SWE.3 Model Generation",
+        metadata={
+            "model_files": [model_path.name, test_model_path.name],
+            "unit_models": [],
+        },
+    )
 
     def fake_run(command, **kwargs):
         if command[1] == "--version":
@@ -86,8 +106,14 @@ def test_workflow_reuses_artifacts_generates_code_and_reports_evidence_gaps(
             script,
         )
         assert match is not None
+        assert "simulate(BSMWiperTest" in script
         with open(f"{match.group(1)}.c", "w", encoding="utf-8") as file:
             file.write("/* generated simulation source */\n")
+        with open(
+            f"{Path(match.group(1)).parent / 'BSMWiperTest_res.mat'}",
+            "wb",
+        ) as file:
+            file.write(b"simulation result")
         return subprocess.CompletedProcess(command, 0, "true\n", "")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -107,7 +133,7 @@ def test_workflow_reuses_artifacts_generates_code_and_reports_evidence_gaps(
         "SWE.3_model": "reused",
         "SWE.3_code": "passed",
     }
-    assert result["rar_summary"]["evidence_gap_count"] == 4
+    assert result["rar_summary"]["evidence_gap_count"] == 3
     rar_path = tmp_path / "processes" / "RAR_requirements_analysis_report" / "RAR.yaml"
     rar = yaml.safe_load(rar_path.read_text(encoding="utf-8"))["rar"]
     assert any(gap["evidence_path"].endswith("SWE.1_software_requirements_evidence.yaml") for gap in rar["evidence_gaps"])
@@ -118,4 +144,11 @@ def test_workflow_reuses_artifacts_generates_code_and_reports_evidence_gaps(
         / "generated"
         / "simulation_c"
         / "BSMWiperController.c"
+    ).is_file()
+    assert (
+        processes_path
+        / "SWE.3_software_detailed_design"
+        / "generated"
+        / "simulation_c"
+        / "BSMWiperTest_res.mat"
     ).is_file()

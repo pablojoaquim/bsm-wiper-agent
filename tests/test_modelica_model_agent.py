@@ -36,13 +36,29 @@ def make_documents():
 def test_model_generation_records_assumptions_and_proceeds_with_open_issues(tmp_path):
     system_document, software_document = make_documents()
     generated_response = {
-        "modelica_source": """model BSMWiperController
-  input Boolean ignitionOn;
-  output Boolean motorOn;
-  // ASSUMPTION ASM-001: Use ignitionOn as the output enable condition.
+                "modelica_source": """model SwitchDecoder
+    input Boolean requested;
+    output Boolean decoded;
 equation
-  motorOn = ignitionOn;
+    decoded = requested;
+end SwitchDecoder;
+
+model BSMWiperController
+    SwitchDecoder switchDecoder;
+    input Boolean ignitionOn;
+    output Boolean motorOn;
+    // ASSUMPTION ASM-001: Use ignitionOn as the output enable condition.
+equation
+    switchDecoder.requested = ignitionOn;
+    motorOn = switchDecoder.decoded;
 end BSMWiperController;
+""",
+                "test_modelica_source": """model BSMWiperTest
+    BSMWiperController controller;
+equation
+    controller.ignitionOn = true;
+    assert(controller.motorOn, "Ignition should enable the motor.");
+end BSMWiperTest;
 """,
         "assumptions": [{
             "id": "ASM-001",
@@ -60,16 +76,22 @@ end BSMWiperController;
     }
     model = RunnableLambda(lambda _: json.dumps(generated_response))
     model_path = tmp_path / "models" / "BSMWiperController.mo"
+    test_model_path = tmp_path / "models" / "BSMWiperTest.mo"
 
     record = generate_modelica_model(
         system_document,
         software_document,
-        {"software_detailed_design": {"units": []}},
+        {"software_detailed_design": {"units": [{"name": "SwitchDecoder"}]}},
         model,
         model_path,
+        test_model_path,
     )
 
     assert model_path.is_file()
+    assert test_model_path.is_file()
+    assert "model SwitchDecoder" in model_path.read_text(encoding="utf-8")
+    assert "assert(" in test_model_path.read_text(encoding="utf-8")
+    assert record["metadata"]["unit_models"] == ["SwitchDecoder"]
     assert "ASSUMPTION ASM-001" in model_path.read_text(encoding="utf-8")
     assert record["assumptions"][0]["classification"] == "assumption"
     assert record["open_issues"][0]["id"] == "OI-001"
@@ -84,6 +106,7 @@ def test_model_generation_rejects_assumption_without_model_marker(tmp_path):
     system_document, software_document = make_documents()
     generated_response = {
         "modelica_source": "model BSMWiperController\nend BSMWiperController;",
+        "test_modelica_source": "model BSMWiperTest\n  assert(true, \"test\");\nend BSMWiperTest;",
         "assumptions": [{
             "id": "ASM-001",
             "requirement_ids": ["SYS-001"],
