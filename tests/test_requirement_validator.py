@@ -30,9 +30,9 @@ def test_baseline_requirements_are_valid():
 
     document = load_requirements(
         project_root
-        / "requirements"
-        / "system"
-        / "bsm_system_requirements.yaml"
+        / "processes"
+        / "SYS.2_system_requirements_analysis"
+        / "SYS.2_system_requirements.yaml"
     )
 
     assert validate_requirements(document) == []
