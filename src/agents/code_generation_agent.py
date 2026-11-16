@@ -8,6 +8,8 @@ from pathlib import Path
 
 import yaml
 
+from process_evidence import ProcessEvidence, evidence_path_for, write_process_evidence
+
 
 def generate_simulation_code(
     model_path: str | Path,
@@ -19,20 +21,21 @@ def generate_simulation_code(
     model_path = Path(model_path).resolve()
     output_directory = Path(output_directory).resolve()
     output_directory.mkdir(parents=True, exist_ok=True)
-    record_path = output_directory / f"{model_path.stem}_code_generation_record.yaml"
-    record = {
-        "stage": "SWE.3 Modelica Code Generation",
-        "status": "running",
+    code_artifact_path = output_directory / f"{model_path.stem}.c"
+    record_path = evidence_path_for(code_artifact_path)
+    assumptions = []
+    open_issues = []
+    metadata = {
         "model_source": str(model_path),
         "compiler_executable": None,
         "compiler_version": None,
         "generated_files": [],
-        "assumptions": [],
-        "open_issues": [],
         "compiler_stdout": "",
         "compiler_stderr": "",
         "scope": "OpenModelica-generated C simulation code; generated C is not compiled or certified as production ECU software.",
     }
+    status = "completed"
+    validation = None
 
     try:
         if not model_path.is_file():
@@ -43,19 +46,23 @@ def generate_simulation_code(
             Path(model_generation_record_path)
             if model_generation_record_path is not None
             else model_path.with_name(
-                f"{model_path.stem}_generation_record.yaml"
+                f"{model_path.stem}_evidence.yaml"
             )
         )
         if generation_record_path.is_file():
-            generation_record = yaml.safe_load(
+            generation_record = ProcessEvidence.model_validate(yaml.safe_load(
                 generation_record_path.read_text(encoding="utf-8")
-            ) or {}
-            assumptions = generation_record.get("assumptions", [])
-            open_issues = generation_record.get("open_issues", [])
-            if not isinstance(assumptions, list) or not isinstance(open_issues, list):
-                raise ValueError("Model generation record must contain assumptions and open_issues lists.")
+            ) or {})
+            assumptions = [
+                assumption.model_dump(mode="json")
+                for assumption in generation_record.assumptions
+            ]
+            open_issues = [
+                issue.model_dump(mode="json")
+                for issue in generation_record.open_issues
+            ]
             assumption_markers = set(re.findall(
-                r"//\s*ASSUMPTION\s+(ASM-\d+)\b",
+                r"//\s*ASSUMPTION\s+([A-Za-z0-9_-]+)\b",
                 source_text,
                 re.IGNORECASE,
             ))
@@ -65,16 +72,14 @@ def generate_simulation_code(
                     raise ValueError(
                         f"Modelica source does not identify assumption {assumption_id}."
                     )
-            record["model_generation_record"] = str(generation_record_path)
-            record["assumptions"] = assumptions
-            record["open_issues"] = open_issues
-        elif re.search(r"//\s*ASSUMPTION\s+ASM-\d+\b", source_text, re.IGNORECASE):
+            metadata["model_generation_evidence"] = str(generation_record_path)
+        elif re.search(r"//\s*ASSUMPTION\s+[A-Za-z0-9_-]+\b", source_text, re.IGNORECASE):
             raise ValueError(
                 "Modelica source contains assumptions but its generation record is missing."
             )
 
         omc_path = _resolve_omc(omc_executable)
-        record["compiler_executable"] = omc_path
+        metadata["compiler_executable"] = omc_path
         version_result = subprocess.run(
             [omc_path, "--version"],
             capture_output=True,
@@ -87,7 +92,7 @@ def generate_simulation_code(
                 "Could not query OpenModelica version: "
                 f"{version_result.stderr.strip()}"
             )
-        record["compiler_version"] = (
+        metadata["compiler_version"] = (
             version_result.stdout.strip() or version_result.stderr.strip()
         )
 
@@ -116,8 +121,8 @@ def generate_simulation_code(
                 timeout=timeout,
                 check=False,
             )
-            record["compiler_stdout"] = _as_text(result.stdout)
-            record["compiler_stderr"] = _as_text(result.stderr)
+            metadata["compiler_stdout"] = _as_text(result.stdout)
+            metadata["compiler_stderr"] = _as_text(result.stderr)
             if result.returncode != 0:
                 raise RuntimeError(
                     f"OpenModelica exited with status {result.returncode}."
@@ -137,21 +142,37 @@ def generate_simulation_code(
                 destination = output_directory / relative_path
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(generated_file, destination)
-            record["generated_files"] = [
+            metadata["generated_files"] = [
                 str(path.relative_to(temp_output)).replace("\\", "/")
                 for path in generated_files
             ]
 
-        record["status"] = "passed"
-        record["validation"] = "OpenModelica translation succeeded and non-empty C simulation source was generated."
+        status = "passed"
+        validation = "OpenModelica translation succeeded and non-empty C simulation source was generated."
     except Exception as error:
-        record["status"] = "failed"
-        record["error"] = str(error)
-        _write_record(record_path, record)
+        write_process_evidence(
+            code_artifact_path,
+            stage="SWE.3 Modelica Code Generation",
+            assumptions=assumptions,
+            open_issues=open_issues,
+            status="failed",
+            metadata=metadata,
+            error=str(error),
+            evidence_path=record_path,
+        )
         raise
 
-    _write_record(record_path, record)
-    return record
+    record, _ = write_process_evidence(
+        code_artifact_path,
+        stage="SWE.3 Modelica Code Generation",
+        assumptions=assumptions,
+        open_issues=open_issues,
+        status=status,
+        validation=validation,
+        metadata=metadata,
+        evidence_path=record_path,
+    )
+    return record.model_dump(mode="json", exclude_none=True)
 
 
 def _resolve_omc(omc_executable: str | Path | None) -> str:
@@ -169,11 +190,6 @@ def _resolve_omc(omc_executable: str | Path | None) -> str:
             "OPENMODELICA_OMC, or add omc to PATH."
         )
     return str(Path(resolved).resolve())
-
-
-def _write_record(record_path: Path, record: dict) -> None:
-    with record_path.open("w", encoding="utf-8") as file:
-        yaml.safe_dump(record, file, sort_keys=False, allow_unicode=True)
 
 
 def _as_text(value: str | bytes | None) -> str:

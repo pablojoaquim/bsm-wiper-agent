@@ -5,6 +5,7 @@ import pytest
 import yaml
 
 from agents.code_generation_agent import generate_simulation_code
+from process_evidence import write_process_evidence
 
 
 def test_generates_simulation_code_and_preserves_assumption_evidence(
@@ -19,23 +20,24 @@ def test_generates_simulation_code_and_preserves_assumption_evidence(
         "end BSMWiperController;\n",
         encoding="utf-8",
     )
-    model_generation_record = model_path.with_name(
-        "BSMWiperController_generation_record.yaml"
-    )
-    model_generation_record.write_text(yaml.safe_dump({
-        "assumptions": [{
+    write_process_evidence(
+        model_path,
+        stage="SWE.3 Model Generation",
+        assumptions=[{
             "id": "ASM-001",
             "classification": "assumption",
             "requirement_ids": ["SYS-001"],
+            "missing_information": "Timing is unspecified.",
             "decision": "Use ignition as output enable.",
             "rationale": "Simple fallback.",
         }],
-        "open_issues": [{
+        open_issues=[{
             "id": "OI-001",
             "requirement_ids": ["SYS-001"],
             "missing_information": "Timing target.",
+            "reason_unresolved": "No timing target was provided.",
         }],
-    }), encoding="utf-8")
+    )
 
     def fake_run(command, **kwargs):
         if command[1] == "--version":
@@ -71,17 +73,17 @@ def test_generates_simulation_code_and_preserves_assumption_evidence(
     )
 
     assert record["status"] == "passed"
-    assert record["compiler_version"] == "OpenModelica test version"
+    assert record["metadata"]["compiler_version"] == "OpenModelica test version"
     assert record["assumptions"][0]["id"] == "ASM-001"
     assert record["open_issues"][0]["id"] == "OI-001"
     assert (output_directory / "BSMWiperController.c").is_file()
-    assert "BSMWiperController.h" in record["generated_files"]
+    assert "BSMWiperController.h" in record["metadata"]["generated_files"]
 
     persisted_record = yaml.safe_load(
-        (output_directory / "BSMWiperController_code_generation_record.yaml")
+        (output_directory / "BSMWiperController_evidence.yaml")
         .read_text(encoding="utf-8")
     )
-    assert persisted_record["compiler_stdout"].startswith("true")
+    assert persisted_record["metadata"]["compiler_stdout"].startswith("true")
 
 
 def test_records_translation_failure_and_does_not_report_success(tmp_path, monkeypatch):
@@ -108,8 +110,8 @@ def test_records_translation_failure_and_does_not_report_success(tmp_path, monke
         )
 
     persisted_record = yaml.safe_load(
-        (output_directory / "BSMWiperController_code_generation_record.yaml")
+        (output_directory / "BSMWiperController_evidence.yaml")
         .read_text(encoding="utf-8")
     )
     assert persisted_record["status"] == "failed"
-    assert persisted_record["compiler_stderr"] == "translation failed"
+    assert persisted_record["metadata"]["compiler_stderr"] == "translation failed"

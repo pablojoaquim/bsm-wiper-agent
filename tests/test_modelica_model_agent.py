@@ -74,7 +74,7 @@ end BSMWiperController;
     assert record["assumptions"][0]["classification"] == "assumption"
     assert record["open_issues"][0]["id"] == "OI-001"
     persisted_record = yaml.safe_load(
-        model_path.with_name("BSMWiperController_generation_record.yaml")
+        model_path.with_name("BSMWiperController_evidence.yaml")
         .read_text(encoding="utf-8")
     )
     assert persisted_record["open_issues"]

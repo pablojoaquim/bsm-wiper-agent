@@ -2,10 +2,10 @@ import json
 import re
 from pathlib import Path
 
-import yaml
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
+from process_evidence import write_process_evidence
 from requirement_models import RequirementDocument
 
 
@@ -123,23 +123,19 @@ def generate_modelica_model(
         assumption["classification"] = "assumption"
 
     model_path = Path(model_path)
-    record_path = model_path.with_name(
-        f"{model_path.stem}_generation_record.yaml"
-    )
-    record = {
-        "stage": "SWE.3 Model Generation",
-        "model_file": model_path.name,
-        "assumptions": assumptions,
-        "open_issues": open_issues,
-        "validation": "Modelica class and assumption-marker checks passed; compiler validation not run.",
-    }
-
     model_path.parent.mkdir(parents=True, exist_ok=True)
     model_path.write_text(modelica_source, encoding="utf-8")
-    with record_path.open("w", encoding="utf-8") as file:
-        yaml.safe_dump(record, file, sort_keys=False, allow_unicode=True)
+    record, _ = write_process_evidence(
+        model_path,
+        stage="SWE.3 Model Generation",
+        assumptions=assumptions,
+        open_issues=open_issues,
+        validation="Modelica class and assumption-marker checks passed; compiler validation not run.",
+        metadata={"model_file": model_path.name},
+        known_requirement_ids=known_requirement_ids,
+    )
 
-    return record
+    return record.model_dump(mode="json", exclude_none=True)
 
 
 def _validate_records(

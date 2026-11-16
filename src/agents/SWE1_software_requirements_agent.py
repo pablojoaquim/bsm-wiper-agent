@@ -7,6 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from requirement_models import RequirementDocument
+from process_evidence import write_process_evidence
 
 
 def generate_software_requirements(
@@ -39,6 +40,10 @@ def generate_software_requirements(
             - Do not repeat system requirements as software requirements.
             - Generate a reasonable number of requirements.
             - Avoid unnecessary detail.
+            - Continue analysis when a source requirement is incomplete or ambiguous.
+            - Record technical decisions as assumptions, separate from customer-confirmed requirements.
+            - Do not turn assumptions into requirements.
+            - Record unresolved information as an open issue without blocking output.
 
             Return ONLY valid JSON, without Markdown formatting.
 
@@ -57,6 +62,23 @@ def generate_software_requirements(
                         "parent": "SYS-001",
                         "derived_from": ["SYS-001"],
                         "rationale": "Reason for this requirement."
+                    }}
+                ],
+                "assumptions": [
+                    {{
+                        "id": "ASM-SWE1-001",
+                        "requirement_ids": ["SYS-001"],
+                        "missing_information": "Information needed to derive the requirement.",
+                        "decision": "The technical assumption used to proceed.",
+                        "rationale": "Why the assumption is reasonable."
+                    }}
+                ],
+                "open_issues": [
+                    {{
+                        "id": "OI-SWE1-001",
+                        "requirement_ids": ["SYS-001"],
+                        "missing_information": "Information still requiring clarification.",
+                        "reason_unresolved": "Why it remains open."
                     }}
                 ]
             }}
@@ -85,6 +107,8 @@ def generate_software_requirements(
 
     # Convert the JSON string into a Python dictionary.
     generated_data = json.loads(response_text)
+    assumptions = generated_data.pop("assumptions")
+    open_issues = generated_data.pop("open_issues")
 
     # Validate the generated requirements with Pydantic.
     software_document = RequirementDocument.model_validate(generated_data)
@@ -128,5 +152,16 @@ def generate_software_requirements(
             sort_keys=False,
             allow_unicode=True,
         )
+
+    write_process_evidence(
+        output_path,
+        stage="SWE.1 Software Requirements Analysis",
+        assumptions=assumptions,
+        open_issues=open_issues,
+        validation="Pydantic schema and system-requirement references validated.",
+        known_requirement_ids={
+            requirement.id for requirement in system_document.requirements
+        },
+    )
 
     return software_document
