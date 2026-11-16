@@ -44,7 +44,7 @@ def generate_software_design(
             - Include relevant conditions and decision logic.
             - Allocate SWE requirements to the units.
             - Do not invent functionality that is not supported by the requirements.
-            - Keep the design simple and suitable for implementation in Simulink.
+            - Keep the design simple and suitable for translation into Modelica.
             - Use meaningful and consistent names.
 
             Return ONLY valid JSON, without Markdown formatting.
